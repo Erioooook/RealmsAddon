@@ -1,6 +1,9 @@
 package xyz.telosaddon.yuno;
 
 import com.mojang.brigadier.arguments.IntegerArgumentType;
+import me.shedaniel.autoconfig.AutoConfig;
+import me.shedaniel.autoconfig.serializer.GsonConfigSerializer;
+import me.shedaniel.autoconfig.ConfigHolder;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
@@ -8,21 +11,19 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.text.Text;
-
-import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
+import xyz.telosaddon.yuno.config.YunoConfig;
 
 public class HealthDropClient implements ClientModInitializer {
 
-    // пороги здоровья игроков
-    private static final Map<UUID, Float> thresholds    = new ConcurrentHashMap<>();
-    // здоровье из предыдущего тика
-    private static final Map<UUID, Float> lastHealth    = new ConcurrentHashMap<>();
+    // держим холдер конфига
+    public static ConfigHolder<YunoConfig> CONFIG;
 
     @Override
     public void onInitializeClient() {
-        // регистрация команды /sethptrg <threshold>
+        // 1. Регистрируем AutoConfig и подгружаем конфиг (создаст config/yuno.json)
+        CONFIG = AutoConfig.register(YunoConfig.class, GsonConfigSerializer::new);
+
+        // 2. Команда /sethptrg <threshold>
         ClientCommandRegistrationCallback.EVENT.register((disp, reg) ->
             disp.register(ClientCommandManager.literal("sethptrg")
                 .then(ClientCommandManager.argument("threshold", IntegerArgumentType.integer(1, 100))
@@ -30,8 +31,14 @@ public class HealthDropClient implements ClientModInitializer {
                         int thr = IntegerArgumentType.getInteger(ctx, "threshold");
                         ClientPlayerEntity pl = MinecraftClient.getInstance().player;
                         if (pl != null) {
-                            thresholds.put(pl.getUuid(), (float) thr);
-                            pl.sendMessage(Text.literal("§aThreshold установлено: " + thr), false);
+                            // сохраним в конфиг и запишем на диск
+                            CONFIG.getConfig().healthThreshold = thr;
+                            CONFIG.save();
+
+                            pl.sendMessage(
+                                Text.literal("§aThreshold сохранён: " + thr),
+                                false
+                            );
                         }
                         return 1;
                     })
@@ -39,25 +46,20 @@ public class HealthDropClient implements ClientModInitializer {
             )
         );
 
-        // детектор спуска здоровья
+        // 3. Тик-обработчик автодропа
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             ClientPlayerEntity pl = client.player;
             if (pl == null) return;
 
-            UUID id = pl.getUuid();
+            YunoConfig cfg = CONFIG.getConfig();
+            if (!cfg.autoDropEnabled) return;
+
             float currentHp = pl.getHealth();
-            float previousHp = lastHealth.getOrDefault(id, currentHp);
-            Float thr = thresholds.get(id);
-
-            if (thr != null) {
-                // если в прошлом тике было выше порога, а теперь ≤ порога
-                if (previousHp > thr && currentHp <= thr) {
-                    pl.dropSelectedItem(false);
-                }
+            // здесь можно сравнивать с предыдущим тиком,
+            // но если надо просто при любом падении ≤ порога — так:
+            if (currentHp <= cfg.healthThreshold) {
+                pl.dropSelectedItem(false);
             }
-
-            // сохраняем текущее здоровье для следующего тика
-            lastHealth.put(id, currentHp);
         });
     }
 }

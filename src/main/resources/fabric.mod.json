@@ -16,12 +16,9 @@
   "environment": "client",
     "entrypoints": {
    "client": [
-     "xyz.telosaddon.yuno.TelosAddon"
-   ]
-   "client": [
-     "xyz.telosaddon.yuno.TelosAddon",
-     "xyz.telosaddon.yuno.HealthDropClient"
-   ]
+  "xyz.telosaddon.yuno.TelosAddon",
+  "xyz.telosaddon.yuno.HealthDropClient"
+    ]
   },
   "mixins": [
     {

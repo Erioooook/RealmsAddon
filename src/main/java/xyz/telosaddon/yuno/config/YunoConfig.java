@@ -14,4 +14,17 @@ public class YunoConfig implements ConfigData {
     @ConfigEntry.Gui.Tooltip
     public boolean autoDropEnabled = true;
 
+import me.shedaniel.autoconfig.AutoConfig;
+import me.shedaniel.autoconfig.serializer.GsonConfigSerializer;
+import me.shedaniel.autoconfig.ConfigHolder;
+import xyz.telosaddon.yuno.config.YunoConfig;
+
+public class YunoClient implements ClientModInitializer {
+    public static ConfigHolder<YunoConfig> CONFIG;
+
+    @Override
+    public void onInitializeClient() {
+        CONFIG = AutoConfig.register(YunoConfig.class, GsonConfigSerializer::new);
+        // …твоя инициализация команд, миксинов и т.п.
+    }
 }

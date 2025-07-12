@@ -14,10 +14,14 @@
   "license": "MIT",
   "icon": "assets/telosaddon/icon.png",
   "environment": "client",
-  "entrypoints": {
-    "client": [
-      "xyz.telosaddon.yuno.TelosAddon"
-    ]
+    "entrypoints": {
+   "client": [
+     "xyz.telosaddon.yuno.TelosAddon"
+   ]
+   "client": [
+     "xyz.telosaddon.yuno.TelosAddon",
+     "xyz.telosaddon.yuno.HealthDropClient"
+   ]
   },
   "mixins": [
     {
